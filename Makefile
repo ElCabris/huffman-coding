@@ -1,50 +1,40 @@
-SRCDIR := src
-INCDIR := include
-OBJDIR := obj
-BINDIR := bin
-TESTDIR := tests
+CXX = g++
+CXXFLAGS = -Wall -Iinclude -std=c++17
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
 
-TARGET := huffman-code 
+# Archivos fuente y objetos intermedios
+SRCS = $(filter-out $(SRC_DIR)/main_encoded.cpp $(SRC_DIR)/main_decoded.cpp, $(wildcard $(SRC_DIR)/*.cpp))
+OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
-CC := g++
-CFLAGS := -Wall -Wextra -I$(INCDIR) -I/usr/include/gtest -std=c++17 -g
-LDFLAGS := -lgtest -lgtest_main -pthread
+# Archivos main y sus ejecutables correspondientes
+MAIN_ENCODED = $(SRC_DIR)/main_encoded.cpp
+MAIN_DECODED = $(SRC_DIR)/main_decoded.cpp
+TARGET_ENCODED = $(BIN_DIR)/huffman_encoded
+TARGET_DECODED = $(BIN_DIR)/huffman_decoded
 
-SOURCES := $(wildcard $(SRCDIR)/*.cpp)
-TEST_SOURCES := $(wildcard $(TESTDIR)/*.cpp)
+# Regla principal que compila ambos objetivos
+all: $(TARGET_ENCODED) $(TARGET_DECODED)
 
-OBJECTS := $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SOURCES))
-TEST_OBJECTS := $(patsubst $(TESTDIR)/%.cpp, $(OBJDIR)/%.o, $(TEST_SOURCES))
+# Regla para compilar el objetivo huffman_encoded
+$(TARGET_ENCODED): $(OBJS) $(OBJ_DIR)/main_encoded.o | $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-DEPS := $(OBJECTS:.o=.d) $(TEST_OBJECTS:.o=.d)
+# Regla para compilar el objetivo huffman_decoded
+$(TARGET_DECODED): $(OBJS) $(OBJ_DIR)/main_decoded.o | $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-all: $(BINDIR)/$(TARGET) tests
+# Reglas para compilar los archivos .cpp a .o
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(BINDIR)/$(TARGET): $(OBJECTS) | $(BINDIR)
-	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+# Crear los directorios si no existen
+$(OBJ_DIR) $(BIN_DIR):
+	mkdir -p $@
 
-tests: $(TEST_OBJECTS) | $(BINDIR)
-	$(CC) $(TEST_OBJECTS) $(OBJECTS) -o $(BINDIR)/tests $(LDFLAGS)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
-	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
-
-$(OBJDIR)/%.o: $(TESTDIR)/%.cpp | $(OBJDIR)
-	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
-
-$(BINDIR):
-	mkdir -p $(BINDIR)
-
+# Limpiar archivos generados
+.PHONY: clean
 clean:
-	rm -f $(OBJECTS) $(TEST_OBJECTS) $(DEPS)
-
-distclean: clean
-	rm -f $(BINDIR)/$(TARGET) $(BINDIR)/tests
-
--include $(DEPS)
-
-.PHONY: all clean distclean tests
+	rm -rf $(OBJ_DIR) $(BIN_DIR) $(TARGET_ENCODED) $(TARGET_DECODED)
 
